@@ -1,0 +1,25 @@
+CREATE OR REPLACE FUNCTION process_actualwin() RETURNS TRIGGER AS $body$
+	DECLARE
+		rec record;
+    BEGIN
+        IF (TG_OP = 'DELETE') THEN
+        	select TG_OP tg_op,OLD.last_sync_at oldsync,OLD.player_id,OLD.period_start,OLD.period_end,OLD.theoretical_win,OLD.actual_win into rec;
+			perform pg_notify('win',row_to_json(rec)::text);
+            RETURN OLD;
+        ELSIF (TG_OP = 'UPDATE') THEN 
+            select date_part('minute',NEW.last_sync_at-OLD.last_sync_at) diff,OLD.last_sync_at oldsync, NEW.last_sync_at newsync ,TG_OP tg_op, NEW.player_id,NEW.period_start,NEW.period_end, OLD.theoretical_win oldtheo,NEW.theoretical_win newtheo,OLD.actual_win oldact,NEW.actual_win newact into rec;
+			perform pg_notify('win',row_to_json(rec)::text);
+            RETURN NEW;
+        ELSIF (TG_OP = 'INSERT') THEN
+        	select TG_OP tg_op,NEW.player_id,NEW.period_start,NEW.period_end into rec;
+			perform pg_notify('win',row_to_json(rec)::text);
+            RETURN NEW;
+        END IF;
+        RETURN NULL;
+
+    END;
+$body$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ActualWin_TRIGGER
+AFTER INSERT OR UPDATE OR DELETE ON player_win
+    FOR EACH ROW EXECUTE PROCEDURE process_actualwin();

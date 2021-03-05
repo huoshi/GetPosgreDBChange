@@ -1,0 +1,52 @@
+CREATE OR REPLACE FUNCTION table_update_notify() RETURNS trigger AS $$
+DECLARE
+  diff bigint;
+  oldsync timestamp;
+  newsync timestamp;
+  player_id bigint;
+  period_start timestamp;
+  period_end timestamp;
+  oldtheo numeric(19,2);
+  newtheo numeric(19,2);
+  oldact numeric(19,2);
+  newact numeric(19,2);
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    diff= NEW.last_sync_at-OLD.last_sync_at;
+    oldsync=OLD.last_sync_at;
+    newsync=NEW.last_sync_at;
+    tg_op=TG_OP;
+    player_id= NEW.player_id;
+    period_start=NEW.period_start;
+    period_end=NEW.period_end;
+    oldtheo=OLD.theoretical_win;
+    newtheo=NEW.theoretical_win;
+    oldact=OLD.actual_win;
+    newact=NEW.actual_win;    
+  ELSE    
+    diff= 0;
+    oldsync=OLD.last_sync_at;
+    newsync=0;
+    tg_op=TG_OP;
+    player_id= NEW.player_id;
+    period_start=0;
+    period_end=0;
+    oldtheo=OLD.theoretical_win;
+    newtheo=0;
+    oldact=OLD.actual_win;
+    newact=0;
+  END IF;
+  PERFORM pg_notify('win', json_build_object('table', TG_TABLE_NAME, 'tg_op', TG_OP，'diff',diff,'oldsync',oldsync,'newsync',newsync,'player_id',player_id,'period_start',period_start,'period_end',period_end,'oldtheo',oldtheo,'newtheo',newtheo,'oldact',oldact,'newact',newact)::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+DROP TRIGGER playerwin_notify_update ON player_win;
+CREATE TRIGGER playerwin_notify_update AFTER UPDATE ON player_win FOR EACH ROW EXECUTE PROCEDURE table_update_notify();
+
+DROP TRIGGER playerwin_notify_insert ON player_win;
+CREATE TRIGGER playerwin_notify_insert AFTER INSERT ON player_win FOR EACH ROW EXECUTE PROCEDURE table_update_notify();
+
+DROP TRIGGER playerwin_notify_delete ON player_win;
+CREATE TRIGGER playerwin_notify_delete AFTER DELETE ON player_win FOR EACH ROW EXECUTE PROCEDURE table_update_notify();

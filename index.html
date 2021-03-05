@@ -1,0 +1,40 @@
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>posgres config change</title>
+    <link rel="stylesheet" href="http://openlayers.org/en/v3.18.2/css/ol.css" type="text/css">
+    <script src="http://openlayers.org/en/v3.18.2/build/ol.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+            function init(){
+                var iosocket = io.connect();
+                iosocket.on('winchange', function(data) { 
+                    data=JSON.parse(data);
+                    var change = document.getElementById("change");
+                    switch(data.tg_op){
+                        case 'INSERT':
+                            var row = document.createElement("h1");
+                            row.innerHTML = data.tg_op + " "+ data.player_id+ " "+ data.period_start + " "+ data.period_end;                
+                            change.append(row);
+                            break;
+                        case 'UPDATE': 
+                            var row = document.createElement("h1"); 
+                            row.innerHTML="<span style=font-size:35px>"+"<font color=\"blue\">"+data.diff+"</font>"+" "+data.oldsync+"<font color=\"red\">"+data.newsync+"</font>"+ " "+data.tg_op + " "+ data.player_id+ " "+ data.period_start + " "+ data.period_end+ " "+ " "+data.oldtheo+" "+"<font color=\"red\">"+data.newtheo+"</font>"+ " "+ data.oldact + " "+"<font color=\"red\">"+data.newact+"</font>"+"</span>";
+                            change.append(row);
+                            break;
+                        case 'DELETE':
+                            var row = document.createElement("h1");                                  
+                            row.innerHTML = data.tg_op + " "+ data.player_id+ " "+ data.period_start + " "+ data.period_end;
+                            change.append(row);
+                            break;
+                    }
+                });
+            }            
+           
+    </script>
+</head>
+<body onload="init()">
+    <div id='change'>
+    </div>
+</body>
+</html>
